@@ -50,6 +50,35 @@
         .reservation-list { list-style: none; padding: 0; }
         .reservation-list li { background: #fff; padding: 10px; margin-bottom: 8px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #ddd; gap: 10px; flex-wrap: wrap; }
         .btn-delete { background: #e74c3c; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; }
+
+        /* Widget GitHub */
+        .github-status-box {
+            margin-top: 25px;
+            padding: 12px 16px;
+            background: #f8f9fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            font-size: 0.9em;
+        }
+        .github-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #24292e;
+        }
+        .github-badge {
+            background: #24292e;
+            color: #ffffff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.85em;
+        }
     </style>
 </head>
 <body>
@@ -98,7 +127,7 @@
                 <div class="form-group">
                     <label>Alojamiento disponible:</label>
                     <select id="propertySelect" required>
-                        <option value="La Casa de los Pájaros">La Casa de los Pájaros</option>
+                        <option value="La Casa de los Pájaros">La Casa de los Pájaros (hasta 6 huéspedes)</option>
                         <option value="Liberi">Liberi (hasta 2 huéspedes)</option>
                     </select>
                     <span class="helper-text" id="propertyHelper">Hasta 2 huéspedes: podés elegir La Casa de los Pájaros o Liberi. De 3 a 6 huéspedes: solo La Casa de los Pájaros.</span>
@@ -117,6 +146,18 @@
                 <a class="btn-airbnb" href="https://www.airbnb.com/h/liberi" target="_blank">🏠 Airbnb: Liberi</a>
             </div>
         </div>
+    </div>
+
+    <!-- Contador / Indicador GitHub -->
+    <div class="github-status-box">
+        <div class="github-left">
+            <!-- Ícono del gato de GitHub (Octocat) -->
+            <svg height="24" width="24" viewBox="0 0 16 16" fill="#24292e" aria-label="GitHub">
+                <path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path>
+            </svg>
+            <span id="githubCycleText">GitHub Pages activo · Ciclo de revisión HTML:</span>
+        </div>
+        <span class="github-badge" id="githubDaysCounter">30 días restantes</span>
     </div>
 
     <!-- Sección Administrador -->
@@ -139,12 +180,33 @@
     const SUPABASE_ANON_KEY = "sb_publishable_oiEh5_vvS1fPJr-TBLil1A_q-VFWmFD";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // Configura aquí la fecha de inicio de tu ciclo (AAAA-MM-DD) y duración en días para renovar el HTML
+    const HTML_CYCLE_START = "2026-11-23";
+    const HTML_CYCLE_DAYS = 30;
+
     let currentDate = new Date();
     let selectedDates = [];
     let bookings = [];
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+    function updateGithubCycleCounter() {
+        const start = new Date(HTML_CYCLE_START + "T00:00:00");
+        const now = new Date();
+        const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const elapsedDays = Math.floor((todayMidnight - start) / (1000 * 60 * 60 * 24));
+        const remainingDays = Math.max(0, HTML_CYCLE_DAYS - elapsedDays);
+
+        const badge = document.getElementById("githubDaysCounter");
+        if (remainingDays === 0) {
+            badge.innerText = "Renovar HTML hoy";
+            badge.style.background = "#e74c3c";
+        } else {
+            badge.innerText = `${remainingDays} ${remainingDays === 1 ? "día restante" : "días restantes"}`;
+            badge.style.background = "#24292e";
+        }
+    }
 
     function updatePropertyOptions() {
         const guestInput = document.getElementById('guestCount');
@@ -159,213 +221,9 @@
         const helperText = document.getElementById('propertyHelper');
 
         if (guests >= 3) {
-            propertySelect.innerHTML = '<option value="La Casa de los Pájaros">La Casa de los Pájaros</option>';
+            propertySelect.innerHTML = '<option value="La Casa de los Pájaros">La Casa de los Pájaros (hasta 6 huéspedes)</option>';
             propertySelect.value = "La Casa de los Pájaros";
             propertySelect.disabled = true;
             helperText.innerText = "Para 3 a 6 huéspedes solo está habilitada La Casa de los Pájaros.";
         } else {
-            const currentVal = propertySelect.value;
-            propertySelect.disabled = false;
-            propertySelect.innerHTML = `
-                <option value="La Casa de los Pájaros">La Casa de los Pájaros</option>
-                <option value="Liberi">Liberi (hasta 2 huéspedes)</option>
-            `;
-            if (currentVal === "Liberi") {
-                propertySelect.value = "Liberi";
-            }
-            helperText.innerText = "Hasta 2 huéspedes: podés elegir La Casa de los Pájaros o Liberi. De 3 a 6 huéspedes: solo La Casa de los Pájaros.";
-        }
-    }
-
-    function getTodayStr() {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    }
-
-    function isPastDate(dateStr) {
-        return dateStr < getTodayStr();
-    }
-
-    async function loadBookings() {
-        const { data, error } = await supabaseClient
-            .from('reservas')
-            .select('id, nombre, telefono, huespedes, fechas, estado')
-            .order('id', { ascending: false });
-
-        if (error) {
-            console.error("Error al cargar reservas:", error);
-            return;
-        }
-
-        bookings = (data || []).map(row => ({
-            id: Number(row.id),
-            name: row.nombre,
-            phone: row.telefono,
-            guests: row.huespedes,
-            dates: row.fechas || [],
-            status: row.estado || 'pendiente'
-        }));
-
-        renderCalendar();
-    }
-
-    function renderCalendar() {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        document.getElementById('monthYear').innerText = `${monthNames[month]} ${year}`;
-
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const calendarGrid = document.getElementById('calendarDays');
-        calendarGrid.innerHTML = '';
-
-        dayNames.forEach(d => {
-            calendarGrid.innerHTML += `<div class="day-name">${d}</div>`;
-        });
-
-        for (let i = 0; i < firstDay; i++) {
-            calendarGrid.innerHTML += `<div class="day empty"></div>`;
-        }
-
-        const bookedDates = bookings.flatMap(b => b.dates);
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            let classes = 'day';
-            let clickAttr = `onclick="toggleDate('${dateStr}')"`;
-
-            if (bookedDates.includes(dateStr)) {
-                classes += ' booked';
-            } else if (isPastDate(dateStr)) {
-                classes += ' past';
-                clickAttr = '';
-            } else if (selectedDates.includes(dateStr)) {
-                classes += ' selected';
-            }
-
-            calendarGrid.innerHTML += `<div class="${classes}" ${clickAttr}>${day}</div>`;
-        }
-        updateAdminList();
-    }
-
-    function toggleDate(dateStr) {
-        if (isPastDate(dateStr)) return;
-
-        const bookedDates = bookings.flatMap(b => b.dates);
-        if (bookedDates.includes(dateStr)) return;
-
-        if (selectedDates.includes(dateStr)) {
-            selectedDates = selectedDates.filter(d => d !== dateStr);
-        } else {
-            selectedDates.push(dateStr);
-        }
-        selectedDates.sort();
-        document.getElementById('selectedDatesText').value = selectedDates.join(', ');
-        renderCalendar();
-    }
-
-    function changeMonth(step) {
-        currentDate.setMonth(currentDate.getMonth() + step);
-        renderCalendar();
-    }
-
-    async function saveBooking(e) {
-        e.preventDefault();
-        selectedDates = selectedDates.filter(d => !isPastDate(d));
-        document.getElementById('selectedDatesText').value = selectedDates.join(', ');
-
-        if (selectedDates.length === 0) {
-            alert("Por favor seleccioná al menos un día disponible desde hoy en adelante.");
-            return;
-        }
-
-        updatePropertyOptions();
-        const submitBtn = document.getElementById('btnSubmit');
-        submitBtn.disabled = true;
-
-        const name = document.getElementById('guestName').value;
-        const phone = document.getElementById('guestPhone').value;
-        const guests = parseInt(document.getElementById('guestCount').value, 10) || 2;
-        const property = guests >= 3 ? "La Casa de los Pájaros" : document.getElementById('propertySelect').value;
-        const datesToSave = [...selectedDates];
-
-        const { error } = await supabaseClient
-            .from('reservas')
-            .insert([{
-                nombre: name,
-                telefono: phone,
-                huespedes: guests,
-                fechas: datesToSave
-            }]);
-
-        submitBtn.disabled = false;
-
-        if (error) {
-            console.error("Error al guardar reserva:", error);
-            alert("No se pudo registrar la reserva. Error: " + error.message);
-            return;
-        }
-
-        const mensaje = `¡Nueva solicitud de reserva!\n\n🏡 Alojamiento: ${property}\n👤 Nombre: ${name}\n📞 Teléfono: ${phone}\n👥 Huéspedes: ${guests}\n📅 Fechas: ${datesToSave.join(', ')}`;
-        window.open(`https://wa.me/${WHATSAPP_OWNER}?text=${encodeURIComponent(mensaje)}`, '_blank');
-
-        alert(`¡Reserva registrada con éxito para ${name} en ${property}!`);
-        selectedDates = [];
-        document.getElementById('bookingForm').reset();
-        updatePropertyOptions();
-        await loadBookings();
-    }
-
-    function toggleAdmin() {
-        const box = document.getElementById('adminBox');
-        if (box.style.display === 'block') {
-            box.style.display = 'none';
-            return;
-        }
-        const pass = prompt("Ingresá la contraseña de propietario:");
-        if (pass === ADMIN_CODE) {
-            box.style.display = 'block';
-        } else {
-            alert("Contraseña incorrecta.");
-        }
-    }
-
-    async function deleteBooking(id) {
-        if (confirm("¿Seguro que querés eliminar esta reserva y liberar las fechas?")) {
-            const numericId = Number(id);
-            const { error } = await supabaseClient
-                .from('reservas')
-                .delete()
-                .eq('id', numericId);
-
-            if (error) {
-                console.error("Error al eliminar reserva:", error);
-                alert("No se pudo eliminar la reserva: " + error.message);
-                return;
-            }
-
-            alert("Reserva eliminada con éxito.");
-            await loadBookings();
-        }
-    }
-
-    function updateAdminList() {
-        const list = document.getElementById('bookingsList');
-        list.innerHTML = '';
-        if (bookings.length === 0) {
-            list.innerHTML = '<li>No hay reservas cargadas todavía.</li>';
-            return;
-        }
-        bookings.forEach(booking => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span><strong>${booking.name}</strong> - ${booking.dates.join(', ')}</span> <button class="btn-delete" onclick="deleteBooking(${booking.id})">Eliminar</button>`;
-            list.appendChild(li);
-        });
-    }
-
-    updatePropertyOptions();
-    loadBookings();
-</script>
-
-</body>
-</html>
+            const
