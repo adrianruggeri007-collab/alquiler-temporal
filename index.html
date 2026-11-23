@@ -31,7 +31,9 @@
         /* Formulario */
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; background: white; }
+        select:disabled { background: #f2f3f4; color: #888; cursor: not-allowed; }
+        .helper-text { font-size: 0.82em; color: #666; margin-top: 5px; display: block; }
         .btn-submit { width: 100%; background: #2ecc71; color: white; border: none; padding: 12px; font-size: 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .btn-submit:hover { background: #27ae60; }
 
@@ -91,7 +93,15 @@
                 </div>
                 <div class="form-group">
                     <label>Cantidad de huéspedes:</label>
-                    <input type="number" id="guestCount" min="1" max="6" value="2" required>
+                    <input type="number" id="guestCount" min="1" max="6" value="2" required onchange="updatePropertyOptions()" oninput="updatePropertyOptions()">
+                </div>
+                <div class="form-group">
+                    <label>Alojamiento disponible:</label>
+                    <select id="propertySelect" required>
+                        <option value="La Casa de los Pájaros">La Casa de los Pájaros</option>
+                        <option value="Liberi">Liberi (hasta 2 huéspedes)</option>
+                    </select>
+                    <span class="helper-text" id="propertyHelper">Hasta 2 huéspedes: podés elegir La Casa de los Pájaros o Liberi. De 3 a 6 huéspedes: solo La Casa de los Pájaros.</span>
                 </div>
                 <button type="submit" class="btn-submit" id="btnSubmit">Confirmar Solicitud de Reserva</button>
             </form>
@@ -124,6 +134,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
     const WHATSAPP_OWNER = "5493624708675";
+    const ADMIN_CODE = "1478";
     const SUPABASE_URL = "https://ougnzitbeervypchwxmx.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_oiEh5_vvS1fPJr-TBLil1A_q-VFWmFD";
     const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -134,6 +145,37 @@
 
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+    function updatePropertyOptions() {
+        const guestInput = document.getElementById('guestCount');
+        let guests = parseInt(guestInput.value, 10);
+        if (isNaN(guests) || guests < 1) guests = 1;
+        if (guests > 6) {
+            guests = 6;
+            guestInput.value = 6;
+        }
+
+        const propertySelect = document.getElementById('propertySelect');
+        const helperText = document.getElementById('propertyHelper');
+
+        if (guests >= 3) {
+            propertySelect.innerHTML = '<option value="La Casa de los Pájaros">La Casa de los Pájaros</option>';
+            propertySelect.value = "La Casa de los Pájaros";
+            propertySelect.disabled = true;
+            helperText.innerText = "Para 3 a 6 huéspedes solo está habilitada La Casa de los Pájaros.";
+        } else {
+            const currentVal = propertySelect.value;
+            propertySelect.disabled = false;
+            propertySelect.innerHTML = `
+                <option value="La Casa de los Pájaros">La Casa de los Pájaros</option>
+                <option value="Liberi">Liberi (hasta 2 huéspedes)</option>
+            `;
+            if (currentVal === "Liberi") {
+                propertySelect.value = "Liberi";
+            }
+            helperText.innerText = "Hasta 2 huéspedes: podés elegir La Casa de los Pájaros o Liberi. De 3 a 6 huéspedes: solo La Casa de los Pájaros.";
+        }
+    }
 
     function getTodayStr() {
         const now = new Date();
@@ -237,12 +279,14 @@
             return;
         }
 
+        updatePropertyOptions();
         const submitBtn = document.getElementById('btnSubmit');
         submitBtn.disabled = true;
 
         const name = document.getElementById('guestName').value;
         const phone = document.getElementById('guestPhone').value;
         const guests = parseInt(document.getElementById('guestCount').value, 10) || 2;
+        const property = guests >= 3 ? "La Casa de los Pájaros" : document.getElementById('propertySelect').value;
         const datesToSave = [...selectedDates];
 
         const { error } = await supabaseClient
@@ -262,12 +306,13 @@
             return;
         }
 
-        const mensaje = `¡Nueva solicitud de reserva!\n\n👤 Nombre: ${name}\n📞 Teléfono: ${phone}\n👥 Huéspedes: ${guests}\n📅 Fechas: ${datesToSave.join(', ')}`;
+        const mensaje = `¡Nueva solicitud de reserva!\n\n🏡 Alojamiento: ${property}\n👤 Nombre: ${name}\n📞 Teléfono: ${phone}\n👥 Huéspedes: ${guests}\n📅 Fechas: ${datesToSave.join(', ')}`;
         window.open(`https://wa.me/${WHATSAPP_OWNER}?text=${encodeURIComponent(mensaje)}`, '_blank');
 
-        alert(`¡Reserva registrada con éxito para ${name}!`);
+        alert(`¡Reserva registrada con éxito para ${name} en ${property}!`);
         selectedDates = [];
         document.getElementById('bookingForm').reset();
+        updatePropertyOptions();
         await loadBookings();
     }
 
@@ -277,8 +322,8 @@
             box.style.display = 'none';
             return;
         }
-        const pass = prompt("Ingresá la contraseña de propietario (por defecto: 1234):");
-        if (pass === "1234") {
+        const pass = prompt("Ingresá la contraseña de propietario:");
+        if (pass === ADMIN_CODE) {
             box.style.display = 'block';
         } else {
             alert("Contraseña incorrecta.");
@@ -318,6 +363,7 @@
         });
     }
 
+    updatePropertyOptions();
     loadBookings();
 </script>
 
