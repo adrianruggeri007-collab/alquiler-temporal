@@ -14,7 +14,7 @@
         /* Calendario */
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
         .calendar-header button { background: #3498db; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
-        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
+        .days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; min-height: 220px; }
         .day-name { font-weight: bold; color: #7f8c8d; padding: 5px; font-size: 0.9em; }
         .day { padding: 12px 5px; border-radius: 6px; cursor: pointer; background: #ecf0f1; transition: 0.2s; }
         .day:hover:not(.empty):not(.booked):not(.past) { background: #bdc3c7; }
@@ -92,7 +92,7 @@
         <div>
             <div class="calendar-header">
                 <button type="button" onclick="changeMonth(-1)">◀ Anterior</button>
-                <h3 id="monthYear"></h3>
+                <h3 id="monthYear">Noviembre 2026</h3>
                 <button type="button" onclick="changeMonth(1)">Siguiente ▶</button>
             </div>
             <div class="days-grid" id="calendarDays"></div>
@@ -178,18 +178,8 @@
     const SUPABASE_URL = "https://ougnzitbeervypchwxmx.supabase.co";
     const SUPABASE_ANON_KEY = "sb_publishable_oiEh5_vvS1fPJr-TBLil1A_q-VFWmFD";
 
-    // Fecha de inicio del ciclo (AAAA-MM-DD) y duración en días para renovar el HTML
     const HTML_CYCLE_START = "2026-11-23";
     const HTML_CYCLE_DAYS = 30;
-
-    let supabaseClient = null;
-    try {
-        if (window.supabase && typeof window.supabase.createClient === "function") {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        }
-    } catch (e) {
-        console.error("Error iniciando Supabase:", e);
-    }
 
     let currentDate = new Date();
     let selectedDates = [];
@@ -198,17 +188,29 @@
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
     const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
+    function getSupabaseClient() {
+        try {
+            if (window.supabase && typeof window.supabase.createClient === "function") {
+                return window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        } catch (err) {
+            console.error("Error iniciando Supabase:", err);
+        }
+        return null;
+    }
+
     function updateGithubCycleCounter() {
         const badge = document.getElementById("githubDaysCounter");
         if (!badge) return;
 
-        const start = new Date(HTML_CYCLE_START + "T00:00:00");
+        const parts = HTML_CYCLE_START.split("-");
+        const start = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
         const now = new Date();
         const todayMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const elapsedDays = Math.floor((todayMidnight - start) / (1000 * 60 * 60 * 24));
         const remainingDays = Math.max(0, HTML_CYCLE_DAYS - elapsedDays);
 
-        if (remainingDays === 0) {
+        if (remainingDays <= 0) {
             badge.textContent = "0 días (Renovar HTML)";
             badge.style.background = "#e74c3c";
         } else {
@@ -253,12 +255,56 @@
         return dateStr < getTodayStr();
     }
 
+    function renderCalendar() {
+        const monthYearEl = document.getElementById('monthYear');
+        const calendarGrid = document.getElementById('calendarDays');
+        if (!monthYearEl || !calendarGrid) return;
+
+        const year = currentDate.getFullYear();
+        const month = currentDate.getMonth();
+        monthYearEl.textContent = monthNames[month] + " " + year;
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        let html = "";
+        for (let i = 0; i < dayNames.length; i++) {
+            html += '<div class="day-name">' + dayNames[i] + '</div>';
+        }
+        for (let i = 0; i < firstDay; i++) {
+            html += '<div class="day empty"></div>';
+        }
+
+        const bookedDates = bookings.flatMap(b => Array.isArray(b.dates) ? b.dates : []);
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(day).padStart(2, '0');
+            let classes = 'day';
+            let clickAttr = 'onclick="toggleDate(\'' + dateStr + '\')"';
+
+            if (bookedDates.includes(dateStr)) {
+                classes += ' booked';
+                clickAttr = '';
+            } else if (isPastDate(dateStr)) {
+                classes += ' past';
+                clickAttr = '';
+            } else if (selectedDates.includes(dateStr)) {
+                classes += ' selected';
+            }
+
+            html += '<div class="' + classes + '" ' + clickAttr + '>' + day + '</div>';
+        }
+
+        calendarGrid.innerHTML = html;
+        updateAdminList();
+    }
+
     async function loadBookings() {
-        renderCalendar();
-        if (!supabaseClient) return;
+        const client = getSupabaseClient();
+        if (!client) return;
 
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await client
                 .from('reservas')
                 .select('id, nombre, telefono, huespedes, fechas, estado')
                 .order('id', { ascending: false });
@@ -273,7 +319,7 @@
                 name: row.nombre,
                 phone: row.telefono,
                 guests: row.huespedes,
-                dates: row.fechas || [],
+                dates: Array.isArray(row.fechas) ? row.fechas : [],
                 status: row.estado || 'pendiente'
             }));
 
@@ -283,52 +329,10 @@
         }
     }
 
-    function renderCalendar() {
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-        const monthYearEl = document.getElementById('monthYear');
-        const calendarGrid = document.getElementById('calendarDays');
-        if (!monthYearEl || !calendarGrid) return;
-
-        monthYearEl.textContent = monthNames[month] + " " + year;
-
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        calendarGrid.innerHTML = '';
-
-        dayNames.forEach(d => {
-            calendarGrid.innerHTML += '<div class="day-name">' + d + '</div>';
-        });
-
-        for (let i = 0; i < firstDay; i++) {
-            calendarGrid.innerHTML += '<div class="day empty"></div>';
-        }
-
-        const bookedDates = bookings.flatMap(b => b.dates || []);
-
-        for (let day = 1; day <= daysInMonth; day++) {
-            const dateStr = year + "-" + String(month + 1).padStart(2, '0') + "-" + String(day).padStart(2, '0');
-            let classes = 'day';
-            let clickAttr = 'onclick="toggleDate(\'' + dateStr + '\')"';
-
-            if (bookedDates.includes(dateStr)) {
-                classes += ' booked';
-            } else if (isPastDate(dateStr)) {
-                classes += ' past';
-                clickAttr = '';
-            } else if (selectedDates.includes(dateStr)) {
-                classes += ' selected';
-            }
-
-            calendarGrid.innerHTML += '<div class="' + classes + '" ' + clickAttr + '>' + day + '</div>';
-        }
-        updateAdminList();
-    }
-
     function toggleDate(dateStr) {
         if (isPastDate(dateStr)) return;
 
-        const bookedDates = bookings.flatMap(b => b.dates || []);
+        const bookedDates = bookings.flatMap(b => Array.isArray(b.dates) ? b.dates : []);
         if (bookedDates.includes(dateStr)) return;
 
         if (selectedDates.includes(dateStr)) {
@@ -362,17 +366,20 @@
 
         const name = document.getElementById('guestName').value;
         const phone = document.getElementById('guestPhone').value;
-        const guests = parseInt(document.getElementById('guestCount').value, 10) || 2;
+        let guests = parseInt(document.getElementById('guestCount').value, 10) || 2;
+        if (guests < 1) guests = 1;
+        if (guests > 6) guests = 6;
         const property = guests >= 3 ? "La Casa de los Pájaros" : document.getElementById('propertySelect').value;
         const datesToSave = [...selectedDates];
 
-        if (!supabaseClient) {
+        const client = getSupabaseClient();
+        if (!client) {
             submitBtn.disabled = false;
             alert("No hay conexión con la base de datos.");
             return;
         }
 
-        const { error } = await supabaseClient
+        const { error } = await client
             .from('reservas')
             .insert([{
                 nombre: name,
@@ -414,10 +421,11 @@
     }
 
     async function deleteBooking(id) {
-        if (!supabaseClient) return;
+        const client = getSupabaseClient();
+        if (!client) return;
         if (confirm("¿Seguro que querés eliminar esta reserva y liberar las fechas?")) {
             const numericId = Number(id);
-            const { error } = await supabaseClient
+            const { error } = await client
                 .from('reservas')
                 .delete()
                 .eq('id', numericId);
@@ -448,9 +456,12 @@
         });
     }
 
-    updateGithubCycleCounter();
-    updatePropertyOptions();
-    loadBookings();
+    window.addEventListener("DOMContentLoaded", function () {
+        updateGithubCycleCounter();
+        updatePropertyOptions();
+        renderCalendar();
+        loadBookings();
+    });
 </script>
 
 </body>
