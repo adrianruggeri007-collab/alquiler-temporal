@@ -19,7 +19,7 @@
         .day { padding: 12px 5px; border-radius: 6px; cursor: pointer; background: #ecf0f1; transition: 0.2s; }
         .day:hover:not(.empty):not(.booked):not(.past) { background: #bdc3c7; }
         .day.empty { background: transparent; cursor: default; }
-        .day.past { background: #f2f3f4; color: #b2babb; cursor: not-allowed; }
+        .day.past { background: #f2f3f4; color: #b2babb; cursor: not-allowed; pointer-events: none; }
         .day.booked { background: #e74c3c; color: white; text-decoration: line-through; cursor: not-allowed; }
         .day.selected { background: #2ecc71; color: white; font-weight: bold; }
 
@@ -190,16 +190,18 @@
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             let classes = 'day';
+            let clickAttr = `onclick="toggleDate('${dateStr}')"`;
 
             if (bookedDates.includes(dateStr)) {
                 classes += ' booked';
             } else if (isPastDate(dateStr)) {
                 classes += ' past';
+                clickAttr = '';
             } else if (selectedDates.includes(dateStr)) {
                 classes += ' selected';
             }
 
-            calendarGrid.innerHTML += `<div class="${classes}" onclick="toggleDate('${dateStr}')">${day}</div>`;
+            calendarGrid.innerHTML += `<div class="${classes}" ${clickAttr}>${day}</div>`;
         }
         updateAdminList();
     }
