@@ -44,6 +44,31 @@
         .btn-airbnb { flex: 1; min-width: 140px; background: #FF5A5F; color: white; border: none; padding: 12px; font-size: 15px; border-radius: 6px; cursor: pointer; font-weight: bold; text-align: center; text-decoration: none; display: inline-block; box-sizing: border-box; }
         .btn-airbnb:hover { background: #e04a4f; }
 
+        /* Tarjeta QR */
+        .qr-box {
+            margin-top: 18px;
+            padding: 14px;
+            background: #f9fbfc;
+            border: 1px solid #e1e6ea;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .qr-box img {
+            width: 165px;
+            height: 165px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: #ffffff;
+            padding: 6px;
+            border: 1px solid #e5e8eb;
+        }
+        .qr-caption {
+            margin-top: 8px;
+            font-size: 0.85em;
+            color: #555;
+            font-weight: 600;
+        }
+
         /* Panel Admin */
         .admin-panel { margin-top: 40px; padding-top: 20px; border-top: 2px dashed #ccc; }
         .admin-controls { display: none; background: #fff8e1; padding: 15px; border-radius: 8px; margin-top: 10px; }
@@ -144,6 +169,12 @@
             <div class="contact-buttons">
                 <a class="btn-airbnb" href="https://www.airbnb.com/h/lacasadlospajaros" target="_blank">🐦 Airbnb: La Casa de los Pájaros</a>
                 <a class="btn-airbnb" href="https://www.airbnb.com/h/liberi" target="_blank">🏠 Airbnb: Liberi</a>
+            </div>
+
+            <!-- Código QR -->
+            <div class="qr-box">
+                <img src="QRAT.jpg" alt="Código QR de acceso rápido">
+                <div class="qr-caption">Escaneá el código QR</div>
             </div>
         </div>
     </div>
